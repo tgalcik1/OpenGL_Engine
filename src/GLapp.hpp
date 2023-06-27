@@ -3,7 +3,7 @@
 #include <fstream>
 #include <sstream>
 
-#include <GL/glew.c>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
@@ -11,17 +11,17 @@
 #define GL_APP
 
 class GLapp{
-    public:
-        GLapp();
-        GLapp(int width, int height);
-        int initWindow();
-        void initShaders();
-        void render();
+public:
+    GLapp();
+    ~GLapp();
+    GLapp(int width, int height);
+    int initWindow();
+    void initShaders();
+    void render();
 
-    private:
-        GLFWwindow* window;
-        int width, height;
-        GLuint programID; // this should be per object eventually
+    GLFWwindow* window;
+    int width, height;
+    GLuint programID; // this should be per object eventually
 };
 
 #endif
