@@ -1,4 +1,5 @@
 #version 330 core
+
 in vec3 fragmentColor;
 uniform vec2 u_resolution;
 uniform float time;

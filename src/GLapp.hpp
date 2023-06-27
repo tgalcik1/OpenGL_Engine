@@ -7,6 +7,8 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
+//#include "object.hpp"
+
 #ifndef GL_APP
 #define GL_APP
 
@@ -19,9 +21,9 @@ public:
     void initShaders();
     void render();
 
-    GLFWwindow* window;
     int width, height;
-    GLuint programID; // this should be per object eventually
+    GLFWwindow* window;
+    std::vector<class Object*> objects;
 };
 
 #endif
