@@ -1,10 +1,16 @@
 #version 330 core
 
-layout(location = 0) in vec3 vertexPosition_modelspace;
-layout(location = 1) in vec3 vertexColor;
-uniform mat4 MVP;
+layout(location = 0) in vec3 vPosition;
+layout(location = 1) in vec3 vNormal;
+layout(location = 2) in vec2 vUV;
+
+uniform mat4 ProjFromWorld;
+uniform mat4 ModelFromWorld;
 uniform float time;
-out vec3 fragmentColor;
+
+out vec4 position;
+out vec3 normal;
+out vec2 uv;
 
 mat4 rotationMatrix(vec3 axis, float angle)
 {
@@ -20,9 +26,11 @@ mat4 rotationMatrix(vec3 axis, float angle)
 }
 
 void main(){
-  vec4 pos = MVP * rotationMatrix(vec3(0,1,0), time) * vec4(vertexPosition_modelspace,1);
-  pos.y += sin(time);
+  //rotationMatrix(vec3(0,-1,0), time)
 
-  fragmentColor = vertexColor;
-  gl_Position = pos;
+  uv = vUV;
+  position = ModelFromWorld * vec4(vPosition, 1);
+  normal = normalize(vNormal * mat3(ModelFromWorld));
+
+  gl_Position = ProjFromWorld * position;
 }

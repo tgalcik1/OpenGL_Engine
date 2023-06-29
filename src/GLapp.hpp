@@ -7,7 +7,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-//#include "object.hpp"
+#include "camera.hpp"
 
 #ifndef GL_APP
 #define GL_APP
@@ -17,13 +17,19 @@ public:
     GLapp();
     ~GLapp();
     GLapp(int width, int height);
-    int initWindow();
-    void initShaders();
+    void initWindow();
+    void pollInputs(float deltaTime);
     void render();
 
     int width, height;
     GLFWwindow* window;
+    double previousTime;
+
+    Camera* camera;
     std::vector<class Object*> objects;
+
+    bool wireframe;
+    int prevState;
 };
 
 #endif

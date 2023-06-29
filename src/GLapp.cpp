@@ -1,18 +1,27 @@
 #include "GLapp.hpp"
 #include "object.hpp"
+#include "camera.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 
 using namespace glm;
 
 GLapp::GLapp(int w, int h){
+    // initialize app and GLFW window
     width = w;
     height = h;
+    wireframe = false;
+    prevState = GLFW_RELEASE;
     initWindow();
     
     // tell OpenGL to enable z-buffer for overlapping surfaces
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); 
+
+    // backface culling
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
     // lock frame rate to display
     glfwSwapInterval(1);
@@ -23,13 +32,11 @@ GLapp::~GLapp(){
     glfwTerminate();
 }
 
-int GLapp::initWindow(){
+void GLapp::initWindow(){
     // initialize GLFW
-    glewExperimental = true; // needed for core profile
     if(!glfwInit())
     {
         fprintf(stderr, "failed to initialize GLFW\n");
-        return -1;
     }
 
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
@@ -44,71 +51,125 @@ int GLapp::initWindow(){
     if(window == nullptr){
         fprintf(stderr, "failed to open GLFW window\n");
         glfwTerminate();
-        return -1;
     }
     glfwMakeContextCurrent(window); 
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);  // ensure we can capture the escape key being pressed below
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);  // hide cursor
     
     // initialize GLEW
     glewExperimental = true; // needed in core profile
     if (glewInit() != GLEW_OK) {
         fprintf(stderr, "failed to initialize GLEW\n");
-        return -1;
     }
-    return 0;
+
+    glViewport(0, 0, width, height);
 }
 
-// void GLapp::initShaders(){
-//     // create and compile our GLSL program from the shaders
-//     programID = LoadShaders("shaders/object.vert", "shaders/object.frag");
-//     glUseProgram(programID);
+void GLapp::pollInputs(float deltaTime){
+    // get mouse position
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    // reset mouse position for next frame
+    glfwSetCursorPos(window, width/2, height/2);
 
-//     // pass in screen resolution as a uniform to our shader
-//     int u_resolution = glGetUniformLocation(programID, "u_resolution");
-//     glUniform2f(u_resolution, width, height);
+    // compute new orientation
+    camera->horizontalAngle += camera->mouseSpeed * deltaTime * float(width/2 - xpos);
+    camera->verticalAngle += camera->mouseSpeed * deltaTime * float(height/2 - ypos);
 
-//     // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-//     glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float) width / (float)height, 0.1f, 100.0f);
-    
-//     // Camera matrix
-//     glm::mat4 View = glm::lookAt(
-//         glm::vec3(4,3,3), // Camera is at (4,3,3), in World Space
-//         glm::vec3(0,0,0), // and looks at the origin
-//         glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
-//     );
-    
-//     // Model matrix : an identity matrix (model will be at the origin)
-//     glm::mat4 Model = glm::mat4(1.0f);
-//     // Our ModelViewProjection : multiplication of our 3 matrices
-//     glm::mat4 mvp = Projection * View * Model; // Remember, matrix multiplication is the other way around
-//     // Get a handle for our "MVP" uniform
-//     // Only during the initialisation
-//     GLuint MatrixID = glGetUniformLocation(programID, "MVP");
-    
-//     // Send our transformation to the currently bound shader, in the "MVP" uniform
-//     // This is done in the main loop since each model will have a different MVP matrix (At least for the M part)
-//     glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
+    camera->forward = vec3(cos(camera->verticalAngle) * sin(camera->horizontalAngle),
+                           sin(camera->verticalAngle),
+                           cos(camera->verticalAngle) * cos(camera->horizontalAngle));
+    camera->right = vec3(sin(camera->horizontalAngle - 3.14f/2.0f),
+                         0,
+                         cos(camera->horizontalAngle - 3.14f/2.0f));
+    camera->up = cross(camera->right, camera->forward);
 
-//     float time = glGetUniformLocation(programID, "time");
-//     glUniform1f(time, glfwGetTime());
-// }
-
-void GLapp::render(){
-
-    for (auto obj : objects){
-        obj->draw();
+    // forward
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
+        camera->position += camera->forward * deltaTime * camera->speed;
+    }
+    // backward
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
+        camera->position -= camera->forward * deltaTime * camera->speed;
+    }
+    // right
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
+        camera->position += camera->right * deltaTime * camera->speed;
+    }
+    // left
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+        camera->position -= camera->right * deltaTime * camera->speed;
+    }
+    // up
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
+        camera->position += camera->up * deltaTime * camera->speed;
+    }
+    // down
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
+        camera->position -= camera->up * deltaTime * camera->speed;
     }
 
-    // swap buffers
-    glfwSwapBuffers(window);   
+    // update ProjFromWorld matrix
+    camera->ProjFromWorld = perspective(radians(camera->fov), (float) width / (float) height, 0.1f, 1000.0f) * 
+                            lookAt(camera->position, camera->position + camera->forward, camera->up);
+
+    // toggle wireframe drawing
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS && prevState == GLFW_RELEASE){
+        wireframe = !wireframe;
+        prevState = GLFW_PRESS;
+        glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_L) == GLFW_RELEASE){
+        prevState = GLFW_RELEASE;
+    }
+}
+
+void GLapp::render(){
+    double currentTime = glfwGetTime();
+    double deltaTime = currentTime - previousTime;
+
+    pollInputs((float)deltaTime);
+
+    // clear the screen
+    glClearColor(0.0, 0.0, 0.2, 1.f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // draw each object
+    for (auto obj : objects){
+        obj->draw(this);
+    }
+
+    // display contents to the window
+    glfwSwapBuffers(window);
+    previousTime = currentTime;
 }
 
 int main(void)
 {
-    GLapp app(800, 600);
+    // initialize OpenGL
+    GLapp app(1280, 960);
+
+    app.camera = new Camera();
+
+    // scene objects
+    app.objects.push_back(new Object("models/bunny.obj"));
 
     app.objects.push_back(new Object());
+    app.objects.at(1)->translate(vec3(0, -1, 0));
+    app.objects.at(1)->scale(vec3(10, 1, 10));
 
+    app.objects.push_back(new Object("models/bunny.obj"));
+    app.objects.at(2)->scale(vec3(2, 2, 2));
+    app.objects.at(2)->translate(vec3(3, 0, 0));
+
+    app.objects.push_back(new Object("models/bunny.obj"));
+    app.objects.at(3)->scale(vec3(0.5, 0.5, 0.5));
+    app.objects.at(3)->translate(vec3(-2, 0, 0));
+
+    // reset mouse position for first frame
+    glfwSetCursorPos(app.window, app.width/2, app.height/2);
+
+    // render and poll each frame
     while (glfwGetKey(app.window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(app.window) == 0){
         app.render();
         glfwPollEvents();

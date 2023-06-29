@@ -9,7 +9,7 @@ preprocessor = "-DGLEW_STATIC"
 
 def main():
     # compile
-    subprocess.call(f"g++ {preprocessor} -c GLapp.cpp object.cpp -I {include_dir}")
+    subprocess.call(f"g++ {preprocessor} -c GLapp.cpp object.cpp camera.cpp -I {include_dir}")
     # link
     subprocess.call(f"g++ -w *.o -o {file_name} -L {lib_dir} {lib}")
 
