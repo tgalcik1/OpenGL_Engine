@@ -16,7 +16,7 @@ void main(){
 
   vec3 color = vec3(0.5);
   
-  vec3 LightDir = vec3(0, 1, 0);
+  vec3 LightDir = vec3(0, 0.8, 0.6);
 
   // apply ambient and diffuse
   vec3 N = normalize(normal);             // surface normal
@@ -24,5 +24,5 @@ void main(){
   color = color * (max(0., dot(N,L)) + 0.5);
 
   // final color
-  fragColor = vec4(normal, 1.0);
+  fragColor = vec4(color, 1.0);
 }

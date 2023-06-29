@@ -15,7 +15,9 @@ class Object{
 public:
     Object();
     Object(const char* path);
+    Object(const char* path, GLuint shaderID);
     ~Object();
+    GLuint getShaderID(){ return shaderID; };
     bool loadModel(const char* path);
     void updateShaders(class GLapp* app);
     void draw(class GLapp* app);

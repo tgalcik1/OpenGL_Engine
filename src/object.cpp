@@ -62,6 +62,34 @@ Object::Object(const char* path){
     glBufferData(GL_ARRAY_BUFFER, uv.size() * sizeof(vec2), &uv[0], GL_STATIC_DRAW);
 }
 
+// overloaded constructor - given filepath to a model and shaderID
+Object::Object(const char* path, GLuint id){
+    // create and compile GLSL program from shaders
+    shaderID = id;
+    glUseProgram(id);
+
+    // create VAO
+    glGenVertexArrays(1, &varrayID);
+    glBindVertexArray(varrayID);
+
+    // load model
+    loadModel(path);
+    ModelFromWorld = mat4(1);
+
+    // create VBO
+    glGenBuffers(1, &vbufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, vbufferID);
+    glBufferData(GL_ARRAY_BUFFER, vert.size() * sizeof(vec3), &vert[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &nbufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, nbufferID);
+    glBufferData(GL_ARRAY_BUFFER, norm.size() * sizeof(vec3), &norm[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &uvbufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, uvbufferID);
+    glBufferData(GL_ARRAY_BUFFER, uv.size() * sizeof(vec2), &uv[0], GL_STATIC_DRAW);
+}
+
 // destructor
 Object::~Object(){
 

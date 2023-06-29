@@ -75,6 +75,7 @@ void GLapp::pollInputs(float deltaTime){
     // compute new orientation
     camera->horizontalAngle += camera->mouseSpeed * deltaTime * float(width/2 - xpos);
     camera->verticalAngle += camera->mouseSpeed * deltaTime * float(height/2 - ypos);
+    camera->verticalAngle = clamp(camera->verticalAngle, (float)-M_PI/2, (float)M_PI/2);
 
     camera->forward = vec3(cos(camera->verticalAngle) * sin(camera->horizontalAngle),
                            sin(camera->verticalAngle),
@@ -147,24 +148,31 @@ void GLapp::render(){
 int main(void)
 {
     // initialize OpenGL
-    GLapp app(1280, 960);
+    GLapp app(800, 600);
 
     app.camera = new Camera();
 
     // scene objects
-    app.objects.push_back(new Object("models/bunny.obj"));
-
     app.objects.push_back(new Object());
-    app.objects.at(1)->translate(vec3(0, -1, 0));
-    app.objects.at(1)->scale(vec3(10, 1, 10));
+    app.objects.at(0)->scale(vec3(5, 0.25, 5));
+    app.objects.at(0)->translate(vec3(0, -0.25, 0));
 
-    app.objects.push_back(new Object("models/bunny.obj"));
+    GLuint shaderID = app.objects.at(0)->getShaderID();
+
+    app.objects.push_back(new Object("models/bunny.obj", shaderID));
+
+    app.objects.push_back(new Object("models/bunny.obj", shaderID));
     app.objects.at(2)->scale(vec3(2, 2, 2));
-    app.objects.at(2)->translate(vec3(3, 0, 0));
+    app.objects.at(2)->translate(vec3(0, 0, -2.5));
 
-    app.objects.push_back(new Object("models/bunny.obj"));
+    app.objects.push_back(new Object("models/bunny.obj", shaderID));
     app.objects.at(3)->scale(vec3(0.5, 0.5, 0.5));
-    app.objects.at(3)->translate(vec3(-2, 0, 0));
+    app.objects.at(3)->translate(vec3(0, 0, 2));
+
+    // walls
+    app.objects.push_back(new Object());
+    app.objects.at(4)->scale(vec3(5, 0.25, 5));
+    app.objects.at(4)->translate(vec3(0, 10, 0));
 
     // reset mouse position for first frame
     glfwSetCursorPos(app.window, app.width/2, app.height/2);

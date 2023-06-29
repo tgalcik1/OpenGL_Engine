@@ -4,7 +4,7 @@
 using namespace glm;
 
 Camera::Camera(){
-    position = vec3(0,1,5);
+    position = vec3(0,1,6);
     fov = 90.0f;
     speed = 3.0f;
     mouseSpeed = 0.05f;
