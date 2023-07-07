@@ -2,14 +2,19 @@
 
 #include "object.hpp"
 #include "shader.hpp"
+#include "light.hpp"
 #include "GLapp.hpp"
 
 using namespace glm;
 
-// default constructor - no model given, create a cube
-Object::Object(){
+// default constructor - no model given create a cube
+Object::Object(const char *texturePath, const char *vertShaderPath, const char *fragShaderPath){
+
+    const char *vs = vertShaderPath == nullptr ? "shaders/object.vert" : vertShaderPath;
+    const char *fs = vertShaderPath == nullptr ? "shaders/object.frag" : fragShaderPath;
+
     //create and compile GLSL program from shaders
-    shaderID = LoadShaders("shaders/object.vert", "shaders/object.frag");
+    shaderID = LoadShaders(vs, fs);
     glUseProgram(shaderID);
 
     // create VAO
@@ -18,6 +23,7 @@ Object::Object(){
 
     // load default cube
     loadModel("models/cube.obj");
+    loadTexture(texturePath);
     ModelFromWorld = mat4(1);
 
     // create VBO
@@ -34,46 +40,27 @@ Object::Object(){
     glBufferData(GL_ARRAY_BUFFER, uv.size() * sizeof(vec2), &uv[0], GL_STATIC_DRAW);
 }
 
-// overloaded constructor - given filepath to a model
-Object::Object(const char* path){
-    // create and compile GLSL program from shaders
-    shaderID = LoadShaders("shaders/object.vert", "shaders/object.frag");
-    glUseProgram(shaderID);
+// overloaded constructor - given filepath to a model and shader
+Object::Object(const char* modelPath, const char *texturePath, const char *vertShaderPath, const char *fragShaderPath){
+    const char *vs = vertShaderPath == nullptr ? "shaders/object.vert" : vertShaderPath;
+    const char *fs = vertShaderPath == nullptr ? "shaders/object.frag" : fragShaderPath;
+
+    //create and compile GLSL program from shaders
+    shaderID = LoadShaders(vs, fs);
 
     // create VAO
     glGenVertexArrays(1, &varrayID);
     glBindVertexArray(varrayID);
 
     // load model
-    loadModel(path);
-    ModelFromWorld = mat4(1);
+    loadModel(modelPath);
+    if(!loadTexture(texturePath)){
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
 
-    // create VBO
-    glGenBuffers(1, &vbufferID);
-    glBindBuffer(GL_ARRAY_BUFFER, vbufferID);
-    glBufferData(GL_ARRAY_BUFFER, vert.size() * sizeof(vec3), &vert[0], GL_STATIC_DRAW);
-
-    glGenBuffers(1, &nbufferID);
-    glBindBuffer(GL_ARRAY_BUFFER, nbufferID);
-    glBufferData(GL_ARRAY_BUFFER, norm.size() * sizeof(vec3), &norm[0], GL_STATIC_DRAW);
-
-    glGenBuffers(1, &uvbufferID);
-    glBindBuffer(GL_ARRAY_BUFFER, uvbufferID);
-    glBufferData(GL_ARRAY_BUFFER, uv.size() * sizeof(vec2), &uv[0], GL_STATIC_DRAW);
-}
-
-// overloaded constructor - given filepath to a model and shaderID
-Object::Object(const char* path, GLuint id){
-    // create and compile GLSL program from shaders
-    shaderID = id;
-    glUseProgram(id);
-
-    // create VAO
-    glGenVertexArrays(1, &varrayID);
-    glBindVertexArray(varrayID);
-
-    // load model
-    loadModel(path);
+        // Give the image to OpenGL
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, 0, 0, 0, GL_BGR, GL_UNSIGNED_BYTE, nullptr);
+    }
     ModelFromWorld = mat4(1);
 
     // create VBO
@@ -166,8 +153,70 @@ bool Object::loadModel(const char* path){
     return true;
 }
 
+// texture loader - supports .bmp
+GLuint Object::loadTexture(const char* imagepath){
+    // Data read from the header of the BMP file
+    unsigned char header[54]; // Each BMP file begins by a 54-bytes header
+    unsigned int dataPos;     // Position in the file where the actual data begins
+    unsigned int width, height;
+    unsigned int imageSize;   // = width*height*3
+    // Actual RGB data
+    unsigned char * data;
+
+    // Open the file
+    FILE * file = fopen(imagepath,"rb");
+    if (!file){printf("Image could not be opened\n"); return 0;}
+
+    if ( fread(header, 1, 54, file)!=54 ){ // If not 54 bytes read : problem
+        printf("Not a correct BMP file\n");
+        return false;
+    }
+
+    if ( header[0]!='B' || header[1]!='M' ){
+        printf("Not a correct BMP file\n");
+        return 0;
+    }
+
+    // Read ints from the byte array
+    dataPos    = *(int*)&(header[0x0A]);
+    imageSize  = *(int*)&(header[0x22]);
+    width      = *(int*)&(header[0x12]);
+    height     = *(int*)&(header[0x16]);
+
+    // Some BMP files are misformatted, guess missing information
+    if (imageSize==0)    imageSize=width*height*3; // 3 : one byte for each Red, Green and Blue component
+    if (dataPos==0)      dataPos=54; // The BMP header is done that way
+
+    // Create a buffer
+    data = new unsigned char [imageSize];
+
+    // Read the actual data from the file into the buffer
+    fread(data,1,imageSize,file);
+
+    //Everything is in memory now, the file can be closed
+    fclose(file);
+
+    // Create one OpenGL texture
+    glGenTextures(1, &textureID);
+
+    // "Bind" the newly created texture : all future texture functions will modify this texture
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Give the image to OpenGL
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    tiling = vec2(1.0, 1.0);
+
+    return textureID;
+}
+
 // update shader uniforms
 void Object::updateShaders(GLapp* app){
+    glUseProgram(shaderID);
+    
     // model view projection matrix
     mat4 ProjFromWorld = app->camera->ProjFromWorld;
 
@@ -186,6 +235,16 @@ void Object::updateShaders(GLapp* app){
     // pass current time as a uniform to shaders
     GLfloat time = glGetUniformLocation(shaderID, "time");
     glUniform1f(time, glfwGetTime());
+
+    // pass light direction as a uniform to shaders
+    GLuint lightDir = glGetUniformLocation(shaderID, "lightDir");
+    glUniform3f(lightDir, app->light->position.x, app->light->position.y, app->light->position.z);
+
+    // pass texture tiling and offset as vec2 uniforms
+    GLuint tile = glGetUniformLocation(shaderID, "tile");
+    glUniform2f(tile, tiling.x, tiling.y);
+    
+    glBindTexture(GL_TEXTURE_2D, textureID);
 }
 
 // draw buffer contents to the screen
@@ -239,4 +298,12 @@ void Object::translate(vec3 pos){
 
 void Object::scale(vec3 scale){
     ModelFromWorld *= vec4(scale, 1.0);
+}
+
+void Object::rotate(vec3 axis, float angle){
+    ModelFromWorld += glm::rotate(ModelFromWorld, glm::radians(angle), axis);
+}
+
+void Object::setTiling(vec2 tile){
+    tiling = tile;
 }

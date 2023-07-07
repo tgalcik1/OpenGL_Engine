@@ -1,6 +1,7 @@
 #include "GLapp.hpp"
 #include "object.hpp"
 #include "camera.hpp"
+#include "light.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -150,29 +151,34 @@ int main(void)
     // initialize OpenGL
     GLapp app(800, 600);
 
-    app.camera = new Camera();
+    // initialize camera and lights
+    app.camera = new Camera(vec3(0,1,6), 90.0f, 3.0f, 0.05f, 3.14f, 0.0f);
+    app.light = new Light(vec3(0, 0.8, 0.6));
 
     // scene objects
-    app.objects.push_back(new Object());
-    app.objects.at(0)->scale(vec3(5, 0.25, 5));
-    app.objects.at(0)->translate(vec3(0, -0.25, 0));
+    app.objects.push_back(new Object("textures/grass2.bmp", nullptr, nullptr));
+    app.objects.at(0)->scale(vec3(5, 0.001, 5));
+    app.objects.at(0)->translate(vec3(0, 0, 0));
+    app.objects.at(0)->setTiling(vec2(5, 5));
 
-    GLuint shaderID = app.objects.at(0)->getShaderID();
+    app.objects.push_back(new Object("models/stanford_bunny_pbr.obj", "textures/bunny.bmp", "shaders/object.vert", "shaders/object.frag"));
+    app.objects.at(1)->scale(vec3(0.02, 0.02, 0.02));
+    app.objects.at(1)->translate(vec3(-2.5, 0, 0));
+    app.objects.at(1)->rotate(vec3(0, 1, 0), 45.0f);
 
-    app.objects.push_back(new Object("models/bunny.obj", shaderID));
-
-    app.objects.push_back(new Object("models/bunny.obj", shaderID));
+    app.objects.push_back(new Object("models/bunny.obj", "textures/uvtemplate.bmp", "shaders/tree.vert", "shaders/object.frag"));
     app.objects.at(2)->scale(vec3(2, 2, 2));
     app.objects.at(2)->translate(vec3(0, 0, -2.5));
 
-    app.objects.push_back(new Object("models/bunny.obj", shaderID));
+    app.objects.push_back(new Object("models/bunny.obj", nullptr, "shaders/object.vert", "shaders/object.frag"));
     app.objects.at(3)->scale(vec3(0.5, 0.5, 0.5));
-    app.objects.at(3)->translate(vec3(0, 0, 2));
+    app.objects.at(3)->translate(vec3(1.5, 0, 2));
+    app.objects.at(3)->rotate(vec3(0, 1, 0), -45.0f);
 
-    // walls
-    app.objects.push_back(new Object());
-    app.objects.at(4)->scale(vec3(5, 0.25, 5));
-    app.objects.at(4)->translate(vec3(0, 10, 0));
+    app.objects.push_back(new Object("models/tree.obj", "textures/bark.bmp", "shaders/tree.vert", "shaders/object.frag"));
+    app.objects.at(4)->scale(vec3(0.01, 0.01, 0.01));
+    app.objects.at(4)->rotate(vec3(0, 1, 0), 90.0f);
+    app.objects.at(4)->setTiling(vec2(0.25, 0.25));
 
     // reset mouse position for first frame
     glfwSetCursorPos(app.window, app.width/2, app.height/2);
@@ -180,6 +186,7 @@ int main(void)
     // render and poll each frame
     while (glfwGetKey(app.window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(app.window) == 0){
         app.render();
+        app.objects.at(4)->rotate(vec3(0, 1, 0), glfwGetTime()/50);
         glfwPollEvents();
     }
 

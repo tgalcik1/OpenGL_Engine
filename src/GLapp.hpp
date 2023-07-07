@@ -27,6 +27,7 @@ public:
 
     Camera* camera;
     std::vector<class Object*> objects;
+    class Light* light;
 
     bool wireframe;
     int prevState;
